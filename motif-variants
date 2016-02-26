@@ -18,16 +18,20 @@ def main(infile, outfile, reference):
     '''
 
     vcf_file = read_input(infile)
-    sequence = SeqIO.read(reference,"fasta").seq
+    sequence = str(SeqIO.read(reference,"fasta").seq)
     variant_neighborhoods = gerrymander(vcf_file, max_motif_size)
 
     positions = dict()
 
     for neighborhood in variant_neighborhoods:
-        positions['reference'] = motifs(reference(neighborhood,sequence),
-                                        motif_list)
-        positions['variant'] = motifs(variant(neighborhood,sequence),
-                                      motif_list)
+        for motif in motif_list:
+            positions[motif] = dict()
+            positions[motif]['reference'] = motifs(
+                reference_segment(neighborhood,sequence),
+                motif)
+            positions[motif]['variant'] = motifs(
+                variant_segment(neighborhood,sequence),
+                motif)
 
     print_motif_summary(positions)
 
@@ -69,28 +73,28 @@ def gerrymander(vcf_file, radius):
     # The first block is always empty
     return districts[1:]
 
-def reference(neighborhood, sequence):
+def reference_segment(neighborhood, sequence):
     # 1 must be subtracted from the VCF positions because VCF positions
     # are one-based and Python's string indexing is zero-based.
     return sequence[neighborhood[0].pos-1:neighborhood[-1].pos-1]
 
-def variant(neighborhood, sequence):
+def variant_segment(neighborhood, sequence):
     '''
     Apply variants to get the consensus sequence for the given segment
     '''
-    segment = reference(neighborhood, sequence)
+    segment = reference_segment(neighborhood, sequence)
     start_offset = neighborhood[0].pos
 
     for variant in neighborhood:
         local_position = variant.pos - start_offset
-        seq_prefix = sequence[:local_position]
-        seq_suffix = sequence[local_position:].replace(
+        seq_prefix = segment[:local_position]
+        seq_suffix = segment[local_position:].replace(
             variant.ref,variant.alts[0],1)
         variant_segment = seq_prefix + seq_suffix
 
     return variant_segment
 
-def motifs(sequence, motifs):
+def motifs(sequence, motif):
     positions = []
     offset = 0
     while True:
