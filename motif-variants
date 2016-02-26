@@ -21,17 +21,21 @@ def main(infile, outfile, reference):
     sequence = str(SeqIO.read(reference,"fasta").seq)
     variant_neighborhoods = gerrymander(vcf_file, max_motif_size)
 
-    positions = dict()
+    positions = {motif:dict(reference=[],variant=[]) for motif in motif_list}
 
     for neighborhood in variant_neighborhoods:
         for motif in motif_list:
-            positions[motif] = dict()
-            positions[motif]['reference'] = motifs(
+            offset = neighborhood[0].pos
+            reference_motifs = motifs(
                 reference_segment(neighborhood,sequence,max_motif_size),
                 motif)
-            positions[motif]['variant'] = motifs(
+            positions[motif]['reference'] += [
+                position + offset for position in reference_motifs]
+            variant_motifs = motifs(
                 variant_segment(neighborhood,sequence,max_motif_size),
                 motif)
+            positions[motif]['variant'] += [
+                position + offset for position in variant_motifs]
 
     print_motif_summary(positions)
 
@@ -110,10 +114,10 @@ def print_motif_summary(positions):
     for motif in positions.iterkeys():
         print(motif)
         print("\t".join(
-            ['reference']+positions[motif]['reference']
+            ['reference'] + [str(_) for _ in positions[motif]['reference']]
         ))
         print("\t".join(
-            ['variant']+positions[motif]['variant']
+            ['variant'] + [str(_) for _ in positions[motif]['variant']]
         ))
 
 if __name__ == '__main__':
