@@ -87,7 +87,7 @@ def variant_segment(neighborhood, sequence, radius):
     Apply variants to get the consensus sequence for the given segment
     '''
     segment = reference_segment(neighborhood, sequence, radius)
-    start_offset = neighborhood[0].pos - radius - 1
+    start_offset = neighborhood[0].pos - radius
 
     for variant in neighborhood:
         local_position = variant.pos - start_offset
