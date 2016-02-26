@@ -1,0 +1,83 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+
+from argparse import ArgumentParser
+import sys
+
+import pysam
+
+# Testing for now
+max_motif_size = 6
+
+def main(infile, outfile):
+    '''
+    Identify variants that cause the gain or loss of motifs.
+    '''
+
+    vcf_file = read_input(infile)
+    variant_neighborhoods = gerrymander(vcf_file, max_motif_size)
+
+    for neighborhood in variant_neighborhoods:
+        count_motifs(variant_neighborhood)
+        pass
+
+def read_input(infile):
+    if infile.endswith('.vcf.gz'):
+        mode = 'rb'
+    elif infile.endswith('.vcf'):
+        mode = 'r'
+    else:
+        print("Input file must be VCF or compressed VCF",file=sys.stderr)
+        sys.exit(1)
+    return pysam.VariantFile(infile, mode)
+
+def gerrymander(vcf_file, radius):
+    '''
+    Return variants positioned within a certain range of each other
+    '''
+    districts = []
+    distance = 0
+    last_position = 0
+    block = []
+
+    for record in vcf_file:
+        distance = record.pos - last_position
+
+        if distance > radius:
+            # The current block is complete; start a new one
+            districts.append(block)
+            block = []
+        else:
+            # reset the range check
+            distance = 0
+
+        block.append(record)
+        last_position = record.pos
+
+    # The last block didn't get added yet
+    districts.append(block)
+    # The first block is always empty
+    return districts[1:]
+
+def count_motifs(sequence, motif):
+    positions = []
+    offset = 0
+    while True:
+        try:
+            next_instance = sequence.index(motif, offset)
+            positions.append(next_instance)
+            offset = next_instance + 1
+        except ValueError:
+            break
+    return positions
+
+if __name__ == '__main__':
+    parser = ArgumentParser(description='Detect motif gain and loss')
+    parser.add_argument('infile',
+                        default='-')
+    parser.add_argument('-o','--outfile',
+                        default='-')
+    arguments = parser.parse_args()
+    main(infile=arguments.infile,
+         outfile=arguments.outfile)

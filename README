@@ -1,0 +1,11 @@
+
+Sequence variation may cause the appearance or disappearance of certain motifs.
+Since motifs can be recognition sites for biological functions such as regulation or DNA modification, their gain and loss can have additional consequences.
+
+
+Variant phasing is important and not considered by VEP [1].
+Coovar handles that case, but is a separate program.
+
+
+
+1. https://www.biostars.org/p/175550/
