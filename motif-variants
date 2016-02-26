@@ -27,10 +27,10 @@ def main(infile, outfile, reference):
         for motif in motif_list:
             positions[motif] = dict()
             positions[motif]['reference'] = motifs(
-                reference_segment(neighborhood,sequence),
+                reference_segment(neighborhood,sequence,max_motif_size),
                 motif)
             positions[motif]['variant'] = motifs(
-                variant_segment(neighborhood,sequence),
+                variant_segment(neighborhood,sequence,max_motif_size),
                 motif)
 
     print_motif_summary(positions)
@@ -73,17 +73,17 @@ def gerrymander(vcf_file, radius):
     # The first block is always empty
     return districts[1:]
 
-def reference_segment(neighborhood, sequence):
+def reference_segment(neighborhood, sequence, radius):
     # 1 must be subtracted from the VCF positions because VCF positions
     # are one-based and Python's string indexing is zero-based.
-    return sequence[neighborhood[0].pos-1:neighborhood[-1].pos-1]
+    return sequence[neighborhood[0].pos-1-radius:neighborhood[-1].pos-1+radius]
 
-def variant_segment(neighborhood, sequence):
+def variant_segment(neighborhood, sequence, radius):
     '''
     Apply variants to get the consensus sequence for the given segment
     '''
-    segment = reference_segment(neighborhood, sequence)
-    start_offset = neighborhood[0].pos
+    segment = reference_segment(neighborhood, sequence, radius)
+    start_offset = neighborhood[0].pos - radius - 1
 
     for variant in neighborhood:
         local_position = variant.pos - start_offset
