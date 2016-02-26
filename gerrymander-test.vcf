@@ -1,7 +1,7 @@
 ##fileformat=VCFv4.2
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 1	85	.	T	C	.	PASS	.
-1	900	.	ATTT	AG	.	PASS	.
+1	900	.	A	AG	.	PASS	.
 1	905	.	G	GCT	.	PASS	.
 1	910	.	G	A	.	PASS	.
 1	1243	.	A	T	.	PASS	.
