@@ -103,7 +103,14 @@ def motifs(sequence, motifs):
     return positions
 
 def print_motif_summary(positions):
-    pass
+    for motif in positions.iterkeys():
+        print(motif)
+        print("\t".join(
+            ['reference']+positions[motif]['reference']
+        ))
+        print("\t".join(
+            ['variant']+positions[motif]['variant']
+        ))
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Detect motif gain and loss')
