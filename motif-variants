@@ -5,22 +5,31 @@ from __future__ import print_function
 from argparse import ArgumentParser
 import sys
 
+from Bio import SeqIO
 import pysam
 
 # Testing for now
 max_motif_size = 6
+motif_list = ['CTCCAG', 'CTGGAG']
 
-def main(infile, outfile):
+def main(infile, outfile, reference):
     '''
     Identify variants that cause the gain or loss of motifs.
     '''
 
     vcf_file = read_input(infile)
+    sequence = SeqIO.read(reference,"fasta").seq
     variant_neighborhoods = gerrymander(vcf_file, max_motif_size)
 
+    positions = dict()
+
     for neighborhood in variant_neighborhoods:
-        count_motifs(variant_neighborhood)
-        pass
+        positions['reference'] = motifs(reference(neighborhood,sequence),
+                                        motif_list)
+        positions['variant'] = motifs(variant(neighborhood,sequence),
+                                      motif_list)
+
+    print_motif_summary(positions)
 
 def read_input(infile):
     if infile.endswith('.vcf.gz'):
@@ -60,7 +69,28 @@ def gerrymander(vcf_file, radius):
     # The first block is always empty
     return districts[1:]
 
-def count_motifs(sequence, motif):
+def reference(neighborhood, sequence):
+    # 1 must be subtracted from the VCF positions because VCF positions
+    # are one-based and Python's string indexing is zero-based.
+    return sequence[neighborhood[0].pos-1:neighborhood[-1].pos-1]
+
+def variant(neighborhood, sequence):
+    '''
+    Apply variants to get the consensus sequence for the given segment
+    '''
+    segment = reference(neighborhood, sequence)
+    start_offset = neighborhood[0].pos
+
+    for variant in neighborhood:
+        local_position = variant.pos - start_offset
+        seq_prefix = sequence[:local_position]
+        seq_suffix = sequence[local_position:].replace(
+            variant.ref,variant.alts[0],1)
+        variant_segment = seq_prefix + seq_suffix
+
+    return variant_segment
+
+def motifs(sequence, motifs):
     positions = []
     offset = 0
     while True:
@@ -72,12 +102,18 @@ def count_motifs(sequence, motif):
             break
     return positions
 
+def print_motif_summary(positions):
+    pass
+
 if __name__ == '__main__':
     parser = ArgumentParser(description='Detect motif gain and loss')
     parser.add_argument('infile',
                         default='-')
     parser.add_argument('-o','--outfile',
                         default='-')
+    parser.add_argument('--reference',
+                        required=True)
     arguments = parser.parse_args()
     main(infile=arguments.infile,
-         outfile=arguments.outfile)
+         outfile=arguments.outfile,
+         reference=arguments.reference)
