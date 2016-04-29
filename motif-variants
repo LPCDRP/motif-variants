@@ -21,23 +21,21 @@ def main(infile, outfile, reference):
     sequence = str(SeqIO.read(reference,"fasta").seq)
     variant_neighborhoods = gerrymander(vcf_file, max_motif_size)
 
-    positions = {motif:dict(reference=[],variant=[]) for motif in motif_list}
+    motif_counts = {motif:{} for motif in motif_list}
 
     for neighborhood in variant_neighborhoods:
         for motif in motif_list:
-            offset = neighborhood[0].pos
+            variant_position = neighborhood[0].pos
             reference_motifs = motifs(
                 reference_segment(neighborhood,sequence,max_motif_size),
                 motif)
-            positions[motif]['reference'] += [
-                position + offset for position in reference_motifs]
             variant_motifs = motifs(
                 variant_segment(neighborhood,sequence,max_motif_size),
                 motif)
-            positions[motif]['variant'] += [
-                position + offset for position in variant_motifs]
-
-    print_motif_summary(positions)
+            if not (reference_motifs == 0 and variant_motifs == 0):
+                motif_counts[motif][variant_position] = (reference_motifs,
+                                                         variant_motifs)
+    print_motif_summary(motif_counts)
 
 def read_input(infile):
     if infile.endswith('.vcf.gz'):
@@ -99,26 +97,31 @@ def variant_segment(neighborhood, sequence, radius):
     return variant_segment
 
 def motifs(sequence, motif):
-    positions = []
+    positions = 0
     offset = 0
     while True:
         try:
             next_instance = sequence.index(motif, offset)
-            positions.append(next_instance)
+            # The previous command will throw an exception
+            # if there is no next instance.
+            positions += 1
             offset = next_instance + 1
         except ValueError:
             break
     return positions
 
-def print_motif_summary(positions):
-    for motif in positions.iterkeys():
+def print_motif_summary(motif_counts):
+    for motif in motif_counts.iterkeys():
         print(motif)
         print("\t".join(
-            ['reference'] + [str(_) for _ in positions[motif]['reference']]
+            ['position','reference','variant']
         ))
-        print("\t".join(
-            ['variant'] + [str(_) for _ in positions[motif]['variant']]
-        ))
+        for position in iter(sorted(motif_counts[motif].iterkeys())):
+            print("\t".join(
+                [str(position),
+                 str(motif_counts[motif][position][0]),
+                 str(motif_counts[motif][position][1])]
+            ))
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Detect motif gain and loss')
