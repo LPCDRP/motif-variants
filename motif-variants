@@ -8,17 +8,15 @@ import sys
 from Bio import SeqIO
 import pysam
 
-# Testing for now
-max_motif_size = 6
-motif_list = ['CTCCAG', 'CTGGAG']
 
-def main(infile, outfile, reference):
+def main(infile, outfile, reference, motif_list):
     '''
     Identify variants that cause the gain or loss of motifs.
     '''
 
     vcf_file = read_input(infile)
     sequence = str(SeqIO.read(reference,"fasta").seq)
+    max_motif_size = len(max(motif_list, key=len))
     variant_neighborhoods = gerrymander(vcf_file, max_motif_size)
 
     motif_counts = {motif:{} for motif in motif_list}
@@ -131,7 +129,21 @@ if __name__ == '__main__':
                         default='-')
     parser.add_argument('--reference',
                         required=True)
+    motif_input = parser.add_mutually_exclusive_group(required=True)
+    motif_input.add_argument('-f','--motif-file',
+                             help='file containing a list of motifs to check')
+    motif_input.add_argument('-m','--motif-list',
+                             help='a comma-delimited string of motifs to check')
     arguments = parser.parse_args()
+
+    if arguments.motif_file:
+        with open(arguments.motif_file) as infile:
+            motif_list = infile.read().splitlines()
+    else:
+        motif_list = arguments.motif_list.split(',')
+
     main(infile=arguments.infile,
          outfile=arguments.outfile,
-         reference=arguments.reference)
+         reference=arguments.reference,
+         motif_list=motif_list,
+    )
