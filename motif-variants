@@ -3,20 +3,22 @@
 from __future__ import print_function
 
 from argparse import ArgumentParser
+import re
 import sys
 
 from Bio import SeqIO
 import pysam
 
 
-def main(infile, outfile, reference, motif_list):
+def main(infile, outfile, reference, motif_list, seq_type='dna'):
     '''
     Identify variants that cause the gain or loss of motifs.
     '''
 
     vcf_file = read_input(infile)
     sequence = str(SeqIO.read(reference,"fasta").seq)
-    max_motif_size = len(max(motif_list, key=len))
+    motif_list = validate_motifs(motif_list, seq_type)
+    max_motif_size = motif_len(max(motif_list, key=motif_len))
     variant_neighborhoods = gerrymander(vcf_file, max_motif_size)
 
     motif_counts = {motif:{} for motif in motif_list}
@@ -44,6 +46,92 @@ def read_input(infile):
         print("Input file must be VCF or compressed VCF",file=sys.stderr)
         sys.exit(1)
     return pysam.VariantFile(infile, mode)
+
+def validate_motifs(motif_list, seq_type):
+    '''
+    Check validity of the input motifs and standardize their format
+
+    Takes an list of motif strings as input and returns them as
+    a list of regular expressions.
+    '''
+
+    bad_motifs = []
+
+    for i in range(len(motif_list)):
+        original_string = motif_list[i]
+        # The input regular expression should be simple, containing only brackets
+        # and characters within our target alphabet.
+        # This check can be improved.
+        if re.search('[\d\.\{\}\(\)\\\\]',motif_list[i]):
+            print(("Motif submitted as {} is invalid."
+                  " Please use simple regular expressions and/or IUPAC ambiguity codes.").format(original_string),
+                  file=sys.stderr)
+            bad_motifs += motif_list[i]
+            continue
+        motif_list[i] = iupac2regex(motif_list[i], seq_type)
+        try:
+            re.compile(motif_list[i])
+        except re.error:
+            print(("Error: Motif submitted as {} was converted to the invalid regular expression {}."
+                  " Please report this problem. The motif will be skipped for now.").format(original_string,motif_list[i]),
+                  file=sys.stderr)
+            del motif_list[i]
+
+    if bad_motifs:
+        print("At least one motif provided was invalid. Please correct your inputs and try again.",
+              file=sys.stderr)
+        sys.exit(1)
+    elif not motif_list:
+        print("There are no valid motifs to process.",
+              file=sys.stderr)
+        sys.exit(1)
+
+    return motif_list
+
+
+# Define a dictionary to map IUPAC ambiguity codes to regular expressions.
+# This is used by iupac2regex().
+iupac_map = dict(
+    dna = dict(
+        R = "[AG]",
+        Y = "[CT]",
+        S = "[GC]",
+        W = "[AT]",
+        K = "[GT]",
+        M = "[AC]",
+        B = "[CGT]",
+        D = "[AGT]",
+        H = "[ACT]",
+        V = "[ACG]",
+        N = "[ACGT]",
+    ),
+    aa = dict(
+        B = "[DN]",
+        X = "[ACDEFGHIKLMNPQRSTVWY]",
+        Z = "[EQ]",
+    )
+)
+
+def iupac2regex(seq, seq_type):
+    '''
+    Convert sequence with IUPAC ambiguity codes to a regular expression
+    '''
+    seq = seq.upper()
+    seq = reduce(lambda motif, character: motif.replace(character, iupac_map[seq_type][character]),
+                 iupac_map[seq_type], seq)
+    return seq
+
+def motif_len(motif):
+    '''
+    Determine the length of a motif represented as a simple regular expression
+    '''
+
+    single_char_motif = re.sub(
+        r'\[[^\[]*\]',
+        r'0',
+        motif,
+    )
+    return len(single_char_motif)
 
 def gerrymander(vcf_file, radius):
     '''
@@ -95,18 +183,8 @@ def variant_segment(neighborhood, sequence, radius):
     return variant_segment
 
 def motifs(sequence, motif):
-    positions = 0
-    offset = 0
-    while True:
-        try:
-            next_instance = sequence.index(motif, offset)
-            # The previous command will throw an exception
-            # if there is no next instance.
-            positions += 1
-            offset = next_instance + 1
-        except ValueError:
-            break
-    return positions
+    matches = re.findall(motif, sequence)
+    return len(matches)
 
 def print_motif_summary(motif_counts):
     for motif in motif_counts.iterkeys():
@@ -134,6 +212,10 @@ if __name__ == '__main__':
                              help='file containing a list of motifs to check')
     motif_input.add_argument('-m','--motif-list',
                              help='a comma-delimited string of motifs to check')
+    parser.add_argument('-t','--sequence-type',
+                        help='DNA or amino acid (default is dna)',
+                        default='dna',
+                        choices=['dna','aa'])
     arguments = parser.parse_args()
 
     if arguments.motif_file:
@@ -146,4 +228,5 @@ if __name__ == '__main__':
          outfile=arguments.outfile,
          reference=arguments.reference,
          motif_list=motif_list,
+         seq_type=arguments.sequence_type,
     )
