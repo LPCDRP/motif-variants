@@ -200,12 +200,15 @@ def print_motif_summary(motif_counts):
             ))
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='Detect motif gain and loss')
+    parser = ArgumentParser(description='Motif-Variant Probe: detect motif gain and loss due to mutations')
     parser.add_argument('infile',
+                        help='vcf or vcf.gz file containing mutations (default: stdin)',
                         default='-')
     parser.add_argument('-o','--outfile',
+                        help='results table (default: stdout)',
                         default='-')
-    parser.add_argument('--reference',
+    parser.add_argument('-r','--reference',
+                        help='reference sequence in fasta format',
                         required=True)
     motif_input = parser.add_mutually_exclusive_group(required=True)
     motif_input.add_argument('-f','--motif-file',
@@ -213,7 +216,7 @@ if __name__ == '__main__':
     motif_input.add_argument('-m','--motif-list',
                              help='a comma-delimited string of motifs to check')
     parser.add_argument('-t','--sequence-type',
-                        help='DNA or amino acid (default is dna)',
+                        help='DNA or amino acid (default: dna)',
                         default='dna',
                         choices=['dna','aa'])
     arguments = parser.parse_args()
