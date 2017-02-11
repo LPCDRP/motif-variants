@@ -194,9 +194,11 @@ def print_motif_summary(motif_counts):
         ))
         for position in iter(sorted(motif_counts[motif].iterkeys())):
             print("\t".join(
-                [str(position),
-                 str(motif_counts[motif][position][0]),
-                 str(motif_counts[motif][position][1])]
+                [
+                    str(position),
+                    str(motif_counts[motif][position][0]),
+                    str(motif_counts[motif][position][1]),
+                ]
             ))
 
 if __name__ == '__main__':
