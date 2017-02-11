@@ -7,6 +7,7 @@ import re
 import sys
 
 from Bio import SeqIO
+from Bio.Seq import Seq
 import pysam
 
 
@@ -18,23 +19,34 @@ def main(infile, outfile, reference, motif_list, seq_type='dna'):
     vcf_file = read_input(infile)
     sequence = str(SeqIO.read(reference,"fasta").seq)
     motif_list = validate_motifs(motif_list, seq_type)
+    partner_motif_list = [motif_revcomp(motif, seq_type)
+                          if motif_revcomp(motif, seq_type) != motif else None
+                          for motif in motif_list ]
     max_motif_size = motif_len(max(motif_list, key=motif_len))
     variant_neighborhoods = gerrymander(vcf_file, max_motif_size)
 
     motif_counts = {motif:{} for motif in motif_list}
 
     for neighborhood in variant_neighborhoods:
-        for motif in motif_list:
+        for motif, partner in zip(motif_list, partner_motif_list):
             variant_position = neighborhood[0].pos
             reference_motifs = motifs(
                 reference_segment(neighborhood,sequence,max_motif_size),
-                motif)
+                motif,
+                partner,
+            )
             variant_motifs = motifs(
                 variant_segment(neighborhood,sequence,max_motif_size),
-                motif)
-            if not (reference_motifs == 0 and variant_motifs == 0):
-                motif_counts[motif][variant_position] = (reference_motifs,
-                                                         variant_motifs)
+                motif,
+                partner,
+            )
+            motif_counts[motif][variant_position] = dict()
+            for strand in ['.','+','-']:
+                if not (reference_motifs[strand] == 0 and variant_motifs[strand] == 0):
+                    motif_counts[motif][variant_position][strand] = dict(
+                        reference=reference_motifs[strand],
+                        query=variant_motifs[strand],
+                    )
     print_motif_summary(motif_counts)
 
 def read_input(infile):
@@ -93,23 +105,28 @@ def validate_motifs(motif_list, seq_type):
 # This is used by iupac2regex().
 iupac_map = dict(
     dna = dict(
-        R = "[AG]",
-        Y = "[CT]",
-        S = "[GC]",
-        W = "[AT]",
-        K = "[GT]",
-        M = "[AC]",
-        B = "[CGT]",
-        D = "[AGT]",
-        H = "[ACT]",
-        V = "[ACG]",
-        N = "[ACGT]",
+        R = "AG",
+        Y = "CT",
+        S = "GC",
+        W = "AT",
+        K = "GT",
+        M = "AC",
+        B = "CGT",
+        D = "AGT",
+        H = "ACT",
+        V = "ACG",
+        N = "ACGT",
     ),
     aa = dict(
-        B = "[DN]",
-        X = "[ACDEFGHIKLMNPQRSTVWY]",
-        Z = "[EQ]",
+        B = "DN",
+        X = "ACDEFGHIKLMNPQRSTVWY",
+        Z = "EQ",
     )
+)
+inv_iupac_map = dict(
+    # converting to set removes duplicate elements, then we turn them back into lists
+    dna = {tuple(sorted(set(meaning))):code for code, meaning in iupac_map['dna'].items()},
+    aa = {tuple(sorted(set(meaning))):code for code, meaning in iupac_map['aa'].items()},
 )
 
 def iupac2regex(seq, seq_type):
@@ -117,9 +134,24 @@ def iupac2regex(seq, seq_type):
     Convert sequence with IUPAC ambiguity codes to a regular expression
     '''
     seq = seq.upper()
-    seq = reduce(lambda motif, character: motif.replace(character, iupac_map[seq_type][character]),
+    seq = reduce(lambda motif, character: motif.replace(character, '[' + iupac_map[seq_type][character] + ']' ),
                  iupac_map[seq_type], seq)
     return seq
+
+def regex2iupac(seq, seq_type):
+    '''
+    Convert a sequence with simple regular expressions to its IUPAC representation
+    '''
+    return re.sub('\[([^\]]*)\]',
+           lambda x: inv_iupac_map[seq_type][tuple(sorted(set(x.group(1))))],
+           seq)
+
+def motif_revcomp(motif, seq_type):
+
+    if seq_type.lower() != 'dna':
+        return None
+
+    return iupac2regex(str(Seq(regex2iupac(motif, seq_type)).reverse_complement()), seq_type)
 
 def motif_len(motif):
     '''
@@ -182,27 +214,48 @@ def variant_segment(neighborhood, sequence, radius):
 
     return variant_segment
 
-def motifs(sequence, motif):
+def motifs(sequence, motif, partner):
     '''
     Find the number of motifs in a given sequence
+
+    Given a sequence and its partner motif (if available),
+    return the number of motifs per strand as a dictionary.
     '''
+    results = {'.':0,'+':0,'-':0}
+    default_strand = '.'
     matches = re.findall(motif, sequence)
-    return len(matches)
+
+    if partner:
+        partner_matches = re.findall(partner, sequence)
+        results['-'] = len(partner_matches)
+        default_strand = '+'
+
+    results[default_strand] = len(matches)
+
+    return results
 
 def print_motif_summary(motif_counts):
+    print("\t".join(
+        [
+            'motif',
+            'strand',
+            'position',
+            'reference',
+            'variant',
+        ]
+    ))
     for motif in motif_counts.iterkeys():
-        print(motif)
-        print("\t".join(
-            ['position','reference','variant']
-        ))
         for position in iter(sorted(motif_counts[motif].iterkeys())):
-            print("\t".join(
-                [
-                    str(position),
-                    str(motif_counts[motif][position][0]),
-                    str(motif_counts[motif][position][1]),
-                ]
-            ))
+            for strand in motif_counts[motif][position].iterkeys():
+                print("\t".join(
+                    [
+                        motif,
+                        strand,
+                        str(position),
+                        str(motif_counts[motif][position][strand]['reference']),
+                        str(motif_counts[motif][position][strand]['query']),
+                    ]
+                ))
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Motif-Variant Probe: detect motif gain and loss due to mutations')
