@@ -183,6 +183,9 @@ def variant_segment(neighborhood, sequence, radius):
     return variant_segment
 
 def motifs(sequence, motif):
+    '''
+    Find the number of motifs in a given sequence
+    '''
     matches = re.findall(motif, sequence)
     return len(matches)
 
