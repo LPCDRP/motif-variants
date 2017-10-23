@@ -33,20 +33,20 @@ def main(infile, outfile, reference, motif_list, seq_type='dna'):
     print_motif_summary(motif_counts)
 
 def process_motif(vcf_file, sequence, motif, partner):
-    motif_size = motif_len(motif)
-    variant_neighborhoods = gerrymander(vcf_file, motif_size)    
+    radius = motif_len(motif) - 1
+    variant_neighborhoods = gerrymander(vcf_file, radius)
     
     motif_counts = dict()
 
     for neighborhood in variant_neighborhoods:
          variant_position = neighborhood[0].pos
          reference_motifs = motifs(
-            reference_segment(neighborhood,sequence,motif_size),
+            reference_segment(neighborhood,sequence,radius),
             motif,
             partner,
          )
          variant_motifs = motifs(
-            variant_segment(neighborhood,sequence,motif_size),
+            variant_segment(neighborhood,sequence,radius),
             motif,
             partner,
          )
