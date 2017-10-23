@@ -22,32 +22,42 @@ def main(infile, outfile, reference, motif_list, seq_type='dna'):
     partner_motif_list = [motif_revcomp(motif, seq_type)
                           if motif_revcomp(motif, seq_type) != motif else None
                           for motif in motif_list ]
-    max_motif_size = motif_len(max(motif_list, key=motif_len))
-    variant_neighborhoods = gerrymander(vcf_file, max_motif_size)
 
-    motif_counts = {motif:{} for motif in motif_list}
+    motif_counts = dict()
+    
+    for motif, partner in zip(motif_list, partner_motif_list):
+        #Below line resets the positional counter for the vcf file
+        vcf_file = read_input(infile)
+        motif_counts[motif] = process_motif(vcf_file, sequence, motif, partner)
+
+    print_motif_summary(motif_counts)
+
+def process_motif(vcf_file, sequence, motif, partner):
+    motif_size = motif_len(motif)
+    variant_neighborhoods = gerrymander(vcf_file, motif_size)    
+    
+    motif_counts = dict()
 
     for neighborhood in variant_neighborhoods:
-        for motif, partner in zip(motif_list, partner_motif_list):
-            variant_position = neighborhood[0].pos
-            reference_motifs = motifs(
-                reference_segment(neighborhood,sequence,max_motif_size),
-                motif,
-                partner,
-            )
-            variant_motifs = motifs(
-                variant_segment(neighborhood,sequence,max_motif_size),
-                motif,
-                partner,
-            )
-            motif_counts[motif][variant_position] = dict()
-            for strand in ['.','+','-']:
-                if not (reference_motifs[strand] == 0 and variant_motifs[strand] == 0):
-                    motif_counts[motif][variant_position][strand] = dict(
-                        reference=reference_motifs[strand],
-                        query=variant_motifs[strand],
-                    )
-    print_motif_summary(motif_counts)
+         variant_position = neighborhood[0].pos
+         reference_motifs = motifs(
+            reference_segment(neighborhood,sequence,motif_size),
+            motif,
+            partner,
+         )
+         variant_motifs = motifs(
+            variant_segment(neighborhood,sequence,motif_size),
+            motif,
+            partner,
+         )
+         motif_counts[variant_position] = dict()
+         for strand in ['.','+','-']:
+            if not (reference_motifs[strand] == 0 and variant_motifs[strand] == 0):
+               motif_counts[variant_position][strand] = dict(
+                  reference=reference_motifs[strand],
+                  query=variant_motifs[strand],
+               )
+    return motif_counts
 
 def read_input(infile):
     if infile.endswith('.vcf.gz'):
