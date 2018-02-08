@@ -83,3 +83,8 @@ The results are returned to us labeling all the motifs as simple regular express
 You can see now that we have now picked up more results due to our relaxing the motif specifications.
 In particular, the second line showing a single occurrence of the partner motif for G[AG][CGT]T[GC] in both the reference and the variant can have multiple meanings.
 Either it is the same motif unaffected by the variant's perturbation, or it may have shifted a bit along the sequence.
+
+# CITATION
+
+**mvp** was originally written for use in our [comparative genomics study of *Mycobacterium tuberculosis* virulent and attenuated strains](https://doi.org/10.1186/s12864-017-3687-5).
+It does not yet have a publication of its own.
