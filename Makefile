@@ -8,7 +8,7 @@ check: \
 ;
 
 gerrymander-check: SHELL=python
-gerrymander-check: gerrymander-test.vcf
+gerrymander-check: example.vcf
 	import pysam
 	from motif_variants import gerrymander
 	infile = pysam.VariantFile('$<', 'r')
