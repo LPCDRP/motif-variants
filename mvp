@@ -154,7 +154,7 @@ def regex2iupac(seq, seq_type):
     '''
     return re.sub('\[([^\]]*)\]',
            lambda x: inv_iupac_map[seq_type][tuple(sorted(set(x.group(1))))],
-           seq)
+           seq.upper())
 
 def motif_revcomp(motif, seq_type):
 
@@ -209,7 +209,7 @@ def reference_segment(neighborhood, sequence, radius):
     #
     # 1 must be again added on the right side because python slices are intervals
     # of the form [a, b)
-    return sequence[neighborhood[0].pos-1-radius:1+neighborhood[-1].pos-1+radius]
+    return sequence[neighborhood[0].pos-1-radius:1+neighborhood[-1].pos-1+radius].upper()
 
 def variant_segment(neighborhood, sequence, radius):
     '''
@@ -225,7 +225,7 @@ def variant_segment(neighborhood, sequence, radius):
             variant.ref,variant.alts[0],1)
         variant_segment = seq_prefix + seq_suffix
 
-    return variant_segment
+    return variant_segment.upper()
 
 def motifs(sequence, motif, partner):
     '''
@@ -236,10 +236,10 @@ def motifs(sequence, motif, partner):
     '''
     results = {'.':0,'+':0,'-':0}
     default_strand = '.'
-    matches = re.findall(motif, sequence)
+    matches = re.findall(motif, sequence, flags=re.IGNORECASE)
 
     if partner:
-        partner_matches = re.findall(partner, sequence)
+        partner_matches = re.findall(partner, sequence, flags=re.IGNORECASE)
         results['-'] = len(partner_matches)
         default_strand = '+'
 
