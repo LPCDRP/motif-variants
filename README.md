@@ -9,7 +9,7 @@ mvp - detect creation/destruction of sequence motifs as a result of mutations
 Sequence variation may cause the appearance or disappearance of certain motifs.
 Since motifs can be recognition sites for biological functions such as regulation or DNA modification, their gain and loss can have additional consequences.
 
-Using a list of variants in variant call format, the corresponding reference sequence, and a set of motifs to search for,**mvp** (motif-variant probe) identifies variants responsible for changing the number of occurrences of these motifs in the sequence.
+Using a list of variants in variant call format, the corresponding reference sequence, and a set of motifs to search for, **mvp** (motif-variant probe) identifies variants responsible for changing the number of occurrences of these motifs in the sequence.
 **mvp** can process both nucleotide _and_ amino acid sequences.
 For the latter, the variant call format is still used to represent the amino acid changes.
 Motifs must be input using IUPAC ambiguity codes, simple regular expressions, or a combination of the two.
