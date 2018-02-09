@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 from argparse import ArgumentParser
+from functools import reduce
 import re
 import sys
 
@@ -257,9 +258,9 @@ def print_motif_summary(motif_counts):
             'variant',
         ]
     ))
-    for motif in motif_counts.iterkeys():
-        for position in iter(sorted(motif_counts[motif].iterkeys())):
-            for strand in motif_counts[motif][position].iterkeys():
+    for motif in motif_counts:
+        for position in iter(sorted(motif_counts[motif])):
+            for strand in motif_counts[motif][position]:
                 print("\t".join(
                     [
                         motif,
